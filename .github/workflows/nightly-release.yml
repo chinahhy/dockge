@@ -10,6 +10,7 @@ permissions: {}
 
 jobs:
   release-nightly:
+    if: github.repository == 'louislam/dockge'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
