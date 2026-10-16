@@ -4,6 +4,10 @@
 
 # Dockge
 
+> **Hoya's fork:** WebSocket-first connection fix, polling fallback, and Docker Hub
+> image `hoya0803/dockge:latest`. See [fork usage and validation](README.hoya.md).
+> The upstream documentation below is retained for reference.
+
 A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager.
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/louislam/dockge?logo=github&style=flat)](https://github.com/louislam/dockge) [![Docker Pulls](https://img.shields.io/docker/pulls/louislam/dockge?logo=docker)](https://hub.docker.com/r/louislam/dockge/tags) [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/louislam/dockge/latest?label=docker%20image%20ver.)](https://hub.docker.com/r/louislam/dockge/tags) [![GitHub last commit (branch)](https://img.shields.io/github/last-commit/louislam/dockge/master?logo=github)](https://github.com/louislam/dockge/commits/master/)

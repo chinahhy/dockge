@@ -6,6 +6,8 @@
         "node": ">= 22.14.0"
     },
     "scripts": {
+        "test:socket": "tsx --test tests/socket-connection.test.ts",
+        "test:browser": "node tests/browser-smoke.mjs",
         "fmt": "eslint \"**/*.{ts,vue}\" --fix",
         "lint": "eslint \"**/*.{ts,vue}\"",
         "check-ts": "tsc --noEmit",
@@ -85,6 +87,7 @@
         "eslint": "~8.50.0",
         "eslint-plugin-jsdoc": "~46.8.2",
         "eslint-plugin-vue": "~9.32.0",
+        "playwright": "1.64.1",
         "sass": "~1.68.0",
         "thememirror": "^2.0.1",
         "typescript": "~5.2.2",

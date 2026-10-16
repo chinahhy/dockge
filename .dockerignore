@@ -15,3 +15,8 @@ frontend
 .git
 .gitignore
 README.md
+README.hoya.md
+.github
+.cache
+test-results
+tests
