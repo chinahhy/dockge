@@ -1,4 +1,4 @@
-name: Node.js CI - Dockge
+name: Validate Dockge fork
 
 on:
   push:
@@ -9,36 +9,54 @@ on:
     branches: [master]
     paths-ignore:
       - '*.md'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ci:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, ARM, ARM64]
-        node: [22] # Can be changed
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
     steps:
-      - name: Checkout Code
-        run: |  # Mainly for Windows
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
         with:
-          node-version: ${{matrix.node}}
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Check Typescript
-        run: npm run check-ts
-
-      - name: Build
-        run: npm run build:frontend
-      # more things can be add later like tests etc..
-
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-fund --no-audit
+      - run: npm run lint
+      - run: npm run check-ts
+      - run: npm run test:socket
+      - run: npm run build:frontend
+      - name: Build the actual release image
+        run: docker build --target release -f docker/Dockerfile -t dockge-check:local .
+      - name: Start isolated image
+        run: |
+          docker run -d --name dockge-check -p 127.0.0.1:5001:5001 --tmpfs /app/data --tmpfs /opt/stacks -e DOCKGE_STACKS_DIR=/opt/stacks dockge-check:local
+          curl --fail --silent --retry 30 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:5001/
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Test rendered frontend and connection stability
+        run: npm run test:browser
+      - name: Verify container health
+        run: |
+          docker exec dockge-check extra/healthcheck
+          test "$(docker inspect --format '{{.RestartCount}}' dockge-check)" = 0
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dockge-browser-validation
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Show diagnostic logs on failure
+        if: failure()
+        run: docker logs dockge-check || true
