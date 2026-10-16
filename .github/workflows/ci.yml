@@ -40,7 +40,7 @@ jobs:
       - name: Start isolated image
         run: |
           docker run -d --name dockge-check -p 127.0.0.1:5001:5001 --tmpfs /app/data --tmpfs /opt/stacks -e DOCKGE_STACKS_DIR=/opt/stacks dockge-check:local
-          curl --fail --silent --retry 30 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:5001/
+          curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 --max-time 5 --output /dev/null http://127.0.0.1:5001/
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Test rendered frontend and connection stability
