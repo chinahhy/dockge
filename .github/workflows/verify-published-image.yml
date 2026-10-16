@@ -1,0 +1,68 @@
+name: Verify published Docker Hub image
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: Published index digest
+        required: true
+        default: sha256:572cdfc3abda913cf058059672f37b1bff585b889819e890c99e691d635e2589
+      revision:
+        description: Expected source revision
+        required: true
+        default: 2eeaa21dc0662f23553d3f318a23989988e48939
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - name: Read back immutable manifests and image labels
+        env:
+          IMAGE_DIGEST: ${{ inputs.digest }}
+          EXPECTED_REVISION: ${{ inputs.revision }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          repository = "hoya0803/dockge"
+          digest = os.environ["IMAGE_DIGEST"]
+          revision = os.environ["EXPECTED_REVISION"]
+          assert re.fullmatch(r"sha256:[0-9a-f]{64}", digest), "Invalid digest"
+          assert re.fullmatch(r"[0-9a-f]{40}", revision), "Invalid revision"
+          def inspect(reference, field):
+              output = subprocess.check_output(
+                  ["docker", "buildx", "imagetools", "inspect", reference, "--format", "{{json ." + field + "}}"],
+                  text=True,
+              )
+              return json.loads(output)
+          index = inspect(repository + "@" + digest, "Manifest")
+          result = {"image": repository + ":latest", "indexDigest": digest, "platforms": []}
+          keys = ["org.opencontainers.image.revision", "org.opencontainers.image.source", "org.opencontainers.image.version"]
+          for manifest in index["manifests"]:
+              platform = manifest.get("platform", {})
+              if platform.get("os") != "linux" or platform.get("architecture") not in ("amd64", "arm64"):
+                  continue
+              image = inspect(repository + "@" + manifest["digest"], "Image")
+              labels = image.get("config", {}).get("Labels", {})
+              assert labels.get(keys[0]) == revision, "Source revision mismatch"
+              assert labels.get(keys[1]) == "https://github.com/chinahhy/dockge", "Source URL mismatch"
+              result["platforms"].append({
+                  "platform": "linux/" + platform["architecture"],
+                  "manifestDigest": manifest["digest"],
+                  "labels": {key: labels.get(key) for key in keys},
+              })
+          assert {p["platform"] for p in result["platforms"]} == {"linux/amd64", "linux/arm64"}, "Missing platform"
+          result["status"] = "verified"
+          with open("published-image-readback.json", "w") as output:
+              json.dump(result, output, indent=2)
+          print(json.dumps(result, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: published-image-readback
+          path: published-image-readback.json
+          retention-days: 7
